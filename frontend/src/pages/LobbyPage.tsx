@@ -8,7 +8,7 @@ import { useRoomState, useRoomStore } from "../state/roomStore";
 export function LobbyPage() {
   const navigate = useNavigate();
   const roomStore = useRoomStore();
-  const { room, error, isLoading } = useRoomState();
+  const { room, error, isLoading, participantId } = useRoomState();
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -16,6 +16,21 @@ export function LobbyPage() {
       navigate("/", { replace: true });
     }
   }, [navigate, room]);
+
+  // Polling setup: fetch room updates every 2000ms
+  useEffect(() => {
+    if (!room) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        await roomStore.fetchRoom();
+      } catch (caughtError) {
+        console.error("Lobby polling error:", caughtError);
+      }
+    }, 2000);
+
+    return () => clearInterval(intervalId);
+  }, [room, roomStore]);
 
   async function handleRefresh() {
     try {
@@ -29,6 +44,10 @@ export function LobbyPage() {
   if (!room) {
     return null;
   }
+
+  const currentParticipant = room.participants.find((p) => p.id === participantId);
+  const isHost = currentParticipant?.isHost === true;
+  const canStart = room.participants.length >= 2;
 
   return (
     <section className="panel placeholder-page">
@@ -49,7 +68,12 @@ export function LobbyPage() {
             <ul className="player-list">
               {room.participants.map((participant) => (
                 <li key={participant.id}>
-                  <span>{participant.name}</span>
+                  <span>
+                    {participant.name}
+                    {participant.isHost ? (
+                      <strong style={{ marginLeft: "8px", fontSize: "0.8em", color: "#3730a3" }}>(Host)</strong>
+                    ) : null}
+                  </span>
                   <span className="player-list__meta">joined</span>
                 </li>
               ))}
@@ -69,9 +93,11 @@ export function LobbyPage() {
         <button className="button button--secondary" disabled={isLoading} onClick={handleRefresh}>
           {isLoading ? "Refreshing..." : "Refresh Room"}
         </button>
-        <button className="button button--primary" onClick={() => navigate("/game")}>
-          Start Game
-        </button>
+        {isHost ? (
+          <button className="button button--primary" disabled={!canStart} onClick={() => navigate("/game")}>
+            Start Game
+          </button>
+        ) : null}
       </div>
     </section>
   );
