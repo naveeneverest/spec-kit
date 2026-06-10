@@ -2,20 +2,30 @@
 
 Checklist of deliverables and implementation order:
 
-- [ ] **Backend: Canvas Endpoints**
-  - [ ] Support saving drawing strokes in memory
-  - [ ] Add `PUT /rooms/:code/canvas` endpoint to update canvas data
-  - [ ] Support clearing canvas data on the backend
+- [x] **Backend: Canvas Endpoints**
+  - [x] Add `canvasStrokes: Stroke[]` to `Room` and `RoomSnapshot` models
+  - [x] Add `PUT /rooms/:code/canvas` endpoint to accept and store stroke data
+  - [x] Support clearing canvas (send empty strokes array)
+  - [x] Expose `canvasStrokes` in `toRoomSnapshot()` for all viewers
 
-- [ ] **Backend: Guess Verification**
-  - [ ] Add `POST /rooms/:code/guess` endpoint
-  - [ ] Implement trimming and case-insensitive matching for guesses
-  - [ ] Update score on correct guess (100 points) and append to `guessHistory`
+- [x] **Backend: Guess Verification**
+  - [x] Add `guessHistory: GuessEntry[]` and `score: number` to models
+  - [x] Add `POST /rooms/:code/guess` endpoint
+  - [x] Trim guess and perform case-insensitive match against `secretWord`
+  - [x] Award 100 points to participant on correct guess
+  - [x] Append `GuessEntry` to `room.guessHistory`
+  - [x] Expose `guessHistory` in `toRoomSnapshot()`
 
-- [ ] **Frontend: Drawing Canvas Interaction**
-  - [ ] Draw local lines and sync them to the backend
-  - [ ] Clear canvas locally and sync clear event to backend
+- [x] **Frontend: Drawing Canvas Interaction**
+  - [x] Create `DrawingCanvas` component with mouse-drag stroke capture
+  - [x] Debounce stroke sync to `PUT /rooms/:code/canvas` (800ms)
+  - [x] Clear button clears local canvas and syncs empty strokes to backend
+  - [x] Guessers receive read-only canvas rendered from polled `canvasStrokes`
+  - [x] Integrate `DrawingCanvas` into `GamePage` (replacing placeholder)
 
-- [ ] **Frontend: Guessing & Synced Logs**
-  - [ ] Add client-side validation for guessing input (trim, ignore empty)
-  - [ ] Render chat history and scoreboard using polled room state
+- [x] **Frontend: Guessing & Synced Logs**
+  - [x] `GuessForm` trims input and blocks submission if empty
+  - [x] `GuessForm` calls `roomStore.submitGuess()` and shows correct/incorrect feedback
+  - [x] `Scoreboard` renders live participant scores from polled room state
+  - [x] `ResultPanel` renders synced guess history with correct-guess highlighting
+  - [x] `GamePage` runs 2s polling loop for scores, canvas, and guess history sync

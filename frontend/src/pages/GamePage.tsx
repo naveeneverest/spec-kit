@@ -1,14 +1,16 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "../components/Card";
+import { DrawingCanvas } from "../components/DrawingCanvas";
 import { GuessForm } from "../components/GuessForm";
 import { ResultPanel } from "../components/ResultPanel";
 import { RoomCodeBadge } from "../components/RoomCodeBadge";
 import { Scoreboard } from "../components/Scoreboard";
-import { useRoomState } from "../state/roomStore";
+import { useRoomState, useRoomStore } from "../state/roomStore";
 
 export function GamePage() {
   const navigate = useNavigate();
+  const roomStore = useRoomStore();
   const { room, participantId } = useRoomState();
 
   useEffect(() => {
@@ -17,33 +19,56 @@ export function GamePage() {
     }
   }, [navigate, room]);
 
+  // Game polling: keep canvas strokes, scores, and guess history in sync
+  useEffect(() => {
+    if (!room) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        await roomStore.fetchRoom();
+      } catch (caughtError) {
+        console.error("Game polling error:", caughtError);
+      }
+    }, 2000);
+
+    return () => clearInterval(intervalId);
+  }, [room, roomStore]);
+
   if (!room) {
     return null;
   }
 
-  const viewer = room.participants.find((participant) => participant.id === participantId) ?? null;
+  const viewer = room.participants.find((p) => p.id === participantId) ?? null;
   const isDrawer = participantId != null && participantId === room.currentDrawerId;
   const drawerParticipant = room.participants.find((p) => p.id === room.currentDrawerId);
 
   function renderWordDisplay() {
     if (isDrawer && room?.secretWord) {
       return (
-        <div style={{ textAlign: "center", padding: "16px 0" }}>
-          <p style={{ fontSize: "0.85em", color: "#6b7280", marginBottom: "4px" }}>Your secret word:</p>
-          <p style={{ fontSize: "1.75em", fontWeight: 700, letterSpacing: "0.05em", color: "#3730a3" }}>
+        <div style={{ textAlign: "center", padding: "12px 0" }}>
+          <p style={{ fontSize: "0.85em", color: "#6b7280", marginBottom: "4px" }}>
+            Your secret word:
+          </p>
+          <p
+            style={{
+              fontSize: "1.75em",
+              fontWeight: 700,
+              letterSpacing: "0.05em",
+              color: "#3730a3"
+            }}
+          >
             {room.secretWord}
           </p>
         </div>
       );
     }
 
-    // Guesser — show underscores based on actual word length
-    // secretWord is null for guessers; backend knows word is one of the 5 starters
-    // We still need to show placeholders — use currentDrawerId presence as indicator active
     return (
-      <div style={{ textAlign: "center", padding: "16px 0" }}>
+      <div style={{ textAlign: "center", padding: "12px 0" }}>
         <p style={{ fontSize: "0.85em", color: "#6b7280", marginBottom: "4px" }}>
-          {drawerParticipant ? `${drawerParticipant.name} is drawing…` : "Waiting for drawer…"}
+          {drawerParticipant
+            ? `${drawerParticipant.name} is drawing…`
+            : "Waiting for drawer…"}
         </p>
         <p style={{ fontSize: "1.75em", letterSpacing: "0.25em", color: "#374151" }}>
           {room?.secretWord ?? "_ _ _ _ _"}
@@ -57,7 +82,9 @@ export function GamePage() {
       <div className="game-page__header">
         <div className="game-page__header-left">
           <span className="section-kicker">Round 1</span>
-          <h1 className="game-page__title">{isDrawer ? "You are drawing!" : "Guess the Word!"}</h1>
+          <h1 className="game-page__title">
+            {isDrawer ? "You are drawing!" : "Guess the Word!"}
+          </h1>
         </div>
         <RoomCodeBadge code={room.code} />
       </div>
@@ -71,21 +98,7 @@ export function GamePage() {
         <div className="game-page__main">
           {renderWordDisplay()}
           <Card title="Canvas">
-            <div
-              className="canvas-placeholder"
-              style={{
-                minHeight: "500px",
-                backgroundColor: "#ffffff",
-                border: "1px solid #e5e7eb",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#9ca3af",
-                fontSize: "0.9em"
-              }}
-            >
-              {isDrawer ? "Draw here (canvas coming soon)" : "Waiting for drawer…"}
-            </div>
+            <DrawingCanvas isDrawer={isDrawer} />
           </Card>
         </div>
 
@@ -101,8 +114,10 @@ export function GamePage() {
                 <dd>{isDrawer ? "🎨 Drawer" : "🔍 Guesser"}</dd>
               </div>
               <div>
-                <dt>Status</dt>
-                <dd>Playing</dd>
+                <dt>Score</dt>
+                <dd style={{ fontWeight: 700, color: (viewer?.score ?? 0) > 0 ? "#16a34a" : undefined }}>
+                  {viewer?.score ?? 0} pts
+                </dd>
               </div>
             </dl>
           </Card>
@@ -123,4 +138,3 @@ export function GamePage() {
     </section>
   );
 }
-

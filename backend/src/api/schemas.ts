@@ -17,6 +17,23 @@ export const startRoomSchema = z.object({
     .min(1, "participantId cannot be empty")
 });
 
+export const canvasUpdateSchema = z.object({
+  participantId: z.string({ required_error: "participantId is required" })
+    .min(1, "participantId cannot be empty"),
+  strokes: z.array(
+    z.object({
+      points: z.array(z.object({ x: z.number(), y: z.number() }))
+    })
+  )
+});
+
+export const guessSubmitSchema = z.object({
+  participantId: z.string({ required_error: "participantId is required" })
+    .min(1, "participantId cannot be empty"),
+  guessText: z.string({ required_error: "guessText is required" })
+    .min(1, "guessText cannot be empty")
+});
+
 export const roomCodeParamsSchema = z.object({
   code: z.string({ required_error: "Room code is required" })
     .transform((val) => val.trim())
