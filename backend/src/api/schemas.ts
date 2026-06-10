@@ -17,6 +17,11 @@ export const startRoomSchema = z.object({
     .min(1, "participantId cannot be empty")
 });
 
+export const restartRoomSchema = z.object({
+  participantId: z.string({ required_error: "participantId is required" })
+    .min(1, "participantId cannot be empty")
+});
+
 export const canvasUpdateSchema = z.object({
   participantId: z.string({ required_error: "participantId is required" })
     .min(1, "participantId cannot be empty"),

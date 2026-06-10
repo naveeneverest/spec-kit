@@ -174,14 +174,56 @@ export function submitGuess(code: string, participantId: string, rawGuess: strin
   };
 
   room.guessHistory.push(entry);
+
+  // Auto-transition to results when all guessers have guessed correctly
+  const guessers = room.participants.filter((p) => p.id !== room.currentDrawerId);
+  const correctGuessers = new Set(
+    room.guessHistory.filter((g) => g.correct).map((g) => g.participantId)
+  );
+  if (guessers.length > 0 && guessers.every((p) => correctGuessers.has(p.id))) {
+    room.status = "results";
+  }
+
   room.updatedAt = now();
   rooms.set(room.code, room);
 
   return { room: cloneRoom(room), correct };
 }
 
+export function restartRoom(code: string, requestingParticipantId: string) {
+  const room = rooms.get(code);
+
+  if (!room) {
+    return null;
+  }
+
+  const host = room.participants.find(
+    (p) => p.id === requestingParticipantId && p.isHost
+  );
+
+  if (!host) {
+    return { error: "Only the host can restart the game" as string };
+  }
+
+  // Reset round state, preserve participants
+  room.participants.forEach((p) => {
+    p.score = 0;
+  });
+  room.currentDrawerId = null;
+  room.secretWord = null;
+  room.canvasStrokes = [];
+  room.guessHistory = [];
+  room.status = "lobby";
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return { room: cloneRoom(room) };
+}
+
 export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSnapshot {
   const isDrawer = viewerParticipantId != null && viewerParticipantId === room.currentDrawerId;
+  // In results state, everyone sees the secret word
+  const showSecret = isDrawer || room.status === "results";
 
   return {
     code: room.code,
@@ -190,7 +232,7 @@ export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSn
     availableWords: listWords(),
     roles: [...STARTER_ROLES],
     currentDrawerId: room.currentDrawerId,
-    secretWord: isDrawer ? room.secretWord : null,
+    secretWord: showSecret ? room.secretWord : null,
     canvasStrokes: room.canvasStrokes.map((s) => ({ ...s, points: [...s.points] })),
     guessHistory: [...room.guessHistory]
   };

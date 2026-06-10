@@ -5,11 +5,12 @@ import {
   guessSubmitSchema,
   HttpError,
   joinRoomSchema,
+  restartRoomSchema,
   roomCodeParamsSchema,
   roomViewerQuerySchema,
   startRoomSchema
 } from "./schemas.js";
-import { createRoom, getRoom, joinRoom, startRoom, submitGuess, toRoomSnapshot, updateCanvas } from "../services/roomStore.js";
+import { createRoom, getRoom, joinRoom, restartRoom, startRoom, submitGuess, toRoomSnapshot, updateCanvas } from "../services/roomStore.js";
 
 export function createRoomsRouter() {
   const router = Router();
@@ -121,6 +122,26 @@ export function createRoomsRouter() {
         correct: result.correct,
         room: toRoomSnapshot(result.room, participantId)
       });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/:code/restart", (request, response, next) => {
+    try {
+      const { code } = roomCodeParamsSchema.parse(request.params);
+      const { participantId } = restartRoomSchema.parse(request.body);
+      const result = restartRoom(code.toUpperCase(), participantId);
+
+      if (!result) {
+        throw new HttpError(404, "Room not found");
+      }
+
+      if ("error" in result) {
+        throw new HttpError(403, result.error ?? "Unauthorized");
+      }
+
+      response.json({ room: toRoomSnapshot(result.room, participantId) });
     } catch (error) {
       next(error);
     }
