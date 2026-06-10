@@ -12,6 +12,11 @@ export const joinRoomSchema = z.object({
     .refine((val) => val.length > 0, { message: "Player name cannot be empty" })
 });
 
+export const startRoomSchema = z.object({
+  participantId: z.string({ required_error: "participantId is required" })
+    .min(1, "participantId cannot be empty")
+});
+
 export const roomCodeParamsSchema = z.object({
   code: z.string({ required_error: "Room code is required" })
     .transform((val) => val.trim())

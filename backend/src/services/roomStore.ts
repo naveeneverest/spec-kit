@@ -56,6 +56,8 @@ export function createRoom(playerName?: string) {
     code: generateUniqueCode(),
     status: "lobby",
     participants: [participant],
+    currentDrawerId: null,
+    secretWord: null,
     createdAt: now(),
     updatedAt: now()
   };
@@ -66,6 +68,29 @@ export function createRoom(playerName?: string) {
     room: cloneRoom(room),
     participantId: participant.id
   };
+}
+
+export function startRoom(code: string, requestingParticipantId: string) {
+  const room = rooms.get(code);
+
+  if (!room) {
+    return null;
+  }
+
+  const host = room.participants.find((p) => p.id === requestingParticipantId && p.isHost);
+
+  if (!host) {
+    return { error: "Only the host can start the game" as string };
+  }
+
+  const drawerIndex = 0; // host is always index 0
+  room.currentDrawerId = room.participants[drawerIndex].id;
+  room.secretWord = STARTER_WORDS[0];
+  room.status = "active";
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return { room: cloneRoom(room) };
 }
 
 export function joinRoom(code: string, playerName?: string) {
@@ -98,13 +123,15 @@ export function saveRoom(room: Room) {
 }
 
 export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSnapshot {
-  void viewerParticipantId;
+  const isDrawer = viewerParticipantId != null && viewerParticipantId === room.currentDrawerId;
 
   return {
     code: room.code,
     status: room.status,
     participants: room.participants.map((participant) => ({ ...participant })),
     availableWords: listWords(),
-    roles: [...STARTER_ROLES]
+    roles: [...STARTER_ROLES],
+    currentDrawerId: room.currentDrawerId,
+    secretWord: isDrawer ? room.secretWord : null
   };
 }
